@@ -1,0 +1,78 @@
+# Python cache and build files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pdb
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.env
+.venv
+venv/
+env/
+ENV/
+env.bak/
+
+# IDE and editor junk
+.vscode/
+.idea/
+*.swp
+*.swo
+*.bak
+*.tmp
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Logs and coverage
+*.log
+*.out
+*.err
+coverage/
+htmlcov/
+.cache/
+pytest_cache/
+.tox/
+.mypy_cache/
+.dmypy.json
+.pyre/
+
+# Uploaded or generated content
+/tmp/
+uploads/
+*.db
+*.sqlite3
+
+# Environment and secrets
+.env
+*.secret
+*.key
+*.pem
+
+# Docker
+**/__pycache__/
+docker-compose.override.yml
+*.pid
+*.sock
+
+# Generated or transient files
+*.tar
+*.zip
+*.gz
+*.tgz
+*.bak
+
+# Node/npm if you later add JS tooling
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# Optional: ignore local test data
+data/
+test-output/

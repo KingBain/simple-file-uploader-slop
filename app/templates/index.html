@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html dir="ltr" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Upload, list, download, and delete files — stored either in the database or in local container storage."
+    />
+    <title>{{ title }}</title>
+
+    <!-- GC Design System CSS Shortcuts -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.design-system.alpha.canada.ca/@gcds-core/css-shortcuts@1.0.0/dist/gcds-css-shortcuts.min.css"
+    />
+
+    <!-- GC Design System Components -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.design-system.alpha.canada.ca/@cdssnc/gcds-components@0.43.1/dist/gcds/gcds.css"
+    />
+    <script
+      type="module"
+      src="https://cdn.design-system.alpha.canada.ca/@cdssnc/gcds-components@0.43.1/dist/gcds/gcds.esm.js"
+    ></script>
+
+    <style>
+      gcds-container[main-container] {
+        margin-block: 2rem;
+      }
+
+      form {
+        margin-block: 1rem 2rem;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        padding: 0.5rem 0.75rem;
+        border-bottom: 1px solid var(--gcds-border__default);
+      }
+
+      th {
+        text-align: left;
+      }
+
+      .inline-form {
+        display: inline;
+      }
+
+      .muted {
+        color: var(--gcds-text__muted);
+      }
+
+      details summary {
+        cursor: pointer;
+        font-weight: 600;
+      }
+
+      details[open] summary {
+        margin-bottom: 0.75rem;
+      }
+
+      select {
+        margin-inline: 0.5rem;
+        padding: 0.35rem 0.5rem;
+      }
+
+      input[type="file"] {
+        display: block;
+        margin-block: 0.5rem 1rem;
+      }
+    </style>
+  </head>
+
+  <body>
+    <gcds-header lang-href="#" skip-to-href="#main-content">
+      <gcds-breadcrumbs slot="breadcrumb">
+        <gcds-breadcrumbs-item href="#">Canada.ca</gcds-breadcrumbs-item>
+        <gcds-breadcrumbs-item href="#">Home</gcds-breadcrumbs-item>
+        <gcds-breadcrumbs-item href="#" current>File uploader</gcds-breadcrumbs-item>
+      </gcds-breadcrumbs>
+      <gcds-search slot="search" label="Search Canada.ca"></gcds-search>
+    </gcds-header>
+
+    <gcds-container id="main-content" main-container size="xl" centered tag="main">
+      <section>
+        <gcds-heading tag="h1">{{ title }}</gcds-heading>
+        <gcds-text class="muted">Max size per file: {{ max_mb }} MB</gcds-text>
+      </section>
+
+      <section>
+        <summary><gcds-heading tag="h2" size="h5">Upload a file</gcds-heading></summary>
+        <form method="POST" action="upload" enctype="multipart/form-data">
+          <gcds-file-uploader id="file" name="file" label="Choose a file" required></gcds-file-uploader>
+
+          <label for="storage">Storage location:</label>
+          <select id="storage" name="storage">
+            <option value="db">Database</option>
+            <option value="local">Local (container disk)</option>
+          </select>
+
+          <gcds-button type="submit" button-style="primary" size="default">Upload</gcds-button>
+          <p class="muted">Max size: {{ max_mb }} MB</p>
+        </form>
+      </section>
+
+      <section>
+        <gcds-heading tag="h2" size="h5">Files</gcds-heading>
+        {% if files|length == 0 %}
+        <p>No files yet.</p>
+        {% else %}
+        <gcds-table caption="Uploaded files">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Size</th>
+                <th>Type</th>
+                <th>Stored</th>
+                <th>Uploaded</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for f in files %}
+              <tr>
+                <td>{{ f.filename }}</td>
+                <td>{{ "{:,}".format(f.size_bytes) }} B</td>
+                <td>{{ f.content_type or "n/a" }}</td>
+                <td>{{ f.storage_type }}</td>
+                <td>{{ f.uploaded_at }}</td>
+                <td>
+                  <a href="download/{{ f.id }}">Download</a>
+                  <form
+                    method="POST"
+                    action="delete/{{ f.id }}"
+                    class="inline-form"
+                    onsubmit="return confirm('Delete this file?')"
+                  >
+                    <gcds-button type="submit" button-style="secondary" size="small">Delete</gcds-button>
+                  </form>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </gcds-table>
+        {% endif %}
+      </section>
+    </gcds-container>
+
+    <gcds-footer
+      display="full"
+      contextual-heading="Canadian Digital Service"
+      contextual-links='{ "Why GC Notify": "#", "Features": "#", "Activity on GC Notify": "#" }'
+    ></gcds-footer>
+  </body>
+</html>
