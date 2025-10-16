@@ -1,33 +1,33 @@
 import os
 import uuid
 import datetime as dt
-from typing import Optional
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Request
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from fastapi.responses import HTMLResponse, StreamingResponse
-from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from jinja2 import Environment, BaseLoader, select_autoescape
 from starlette.responses import RedirectResponse
-from starlette.datastructures import Headers
 
 from sqlalchemy import (
-    create_engine, MetaData, Table, Column, LargeBinary, String, DateTime,
-    BigInteger
+    create_engine, MetaData, Table, Column, LargeBinary, String, DateTime, BigInteger,
+    select, insert, delete  # 2.x style imports
 )
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.sql import select, insert, delete
 from sqlalchemy.engine import Engine
 
 # ---- Config ----
-DATABASE_URL = os.environ.get("DATABASE_URL")  # e.g. postgresql+psycopg://user:pass@host:5432/db
-MAX_UPLOAD_MB = int(os.environ.get("MAX_UPLOAD_MB", "100"))  # basic guardrail
+DATABASE_URL = os.environ.get("DATABASE_URL")  # e.g. postgresql+psycopg://user:pass@host:5432/db?sslmode=require
+MAX_UPLOAD_MB = int(os.environ.get("MAX_UPLOAD_MB", "100"))
 APP_TITLE = os.environ.get("APP_TITLE", "WebFileBox")
 
 if not DATABASE_URL:
-    raise RuntimeError("DATABASE_URL is required. Example: postgresql+psycopg://user:pass@host:5432/db")
+    raise RuntimeError("DATABASE_URL is required. Example: postgresql+psycopg://user:pass@host:5432/db?sslmode=require")
 
 # ---- DB setup ----
-engine: Engine = create_engine(DATABASE_URL, pool_pre_ping=True, future=True)
+engine: Engine = create_engine(
+    DATABASE_URL,
+    pool_pre_ping=True,
+    future=True,  # SQLAlchemy 2.x semantics
+)
 metadata = MetaData()
 
 files = Table(
@@ -41,9 +41,9 @@ files = Table(
     Column("uploaded_at", DateTime(timezone=True), nullable=False),
 )
 
-# Create table if it doesn't exist (simple bootstrapping; for real use, run migrations)
+# Create table if it doesn't exist (idempotent)
 with engine.begin() as conn:
-    conn.run_callable(metadata.create_all)
+    metadata.create_all(conn, tables=[files])
 
 app = FastAPI(title=APP_TITLE)
 
@@ -111,11 +111,7 @@ INDEX_HTML = """<!doctype html>
 </html>
 """
 
-from jinja2 import Environment, BaseLoader, select_autoescape
-jinja_env = Environment(
-    loader=BaseLoader(),
-    autoescape=select_autoescape(["html", "xml"])
-)
+jinja_env = Environment(loader=BaseLoader(), autoescape=select_autoescape(["html", "xml"]))
 
 def render_index(rows):
     template = jinja_env.from_string(INDEX_HTML)
@@ -130,9 +126,9 @@ def index():
 
 @app.post("/upload")
 async def upload(file: UploadFile = File(...), request: Request = None):
-    # Size guardrail (best-effort; reverse proxies should also enforce)
-    content_length = request.headers.get("content-length")
-    if content_length is not None:
+    # Best-effort size guardrail (enforce at proxy too)
+    content_length = request.headers.get("content-length") if request else None
+    if content_length:
         try:
             if int(content_length) > MAX_UPLOAD_MB * 1024 * 1024:
                 raise HTTPException(status_code=413, detail="File too large")
@@ -143,13 +139,10 @@ async def upload(file: UploadFile = File(...), request: Request = None):
     size_bytes = len(data)
     if size_bytes == 0:
         raise HTTPException(status_code=400, detail="Empty file")
-
     if size_bytes > MAX_UPLOAD_MB * 1024 * 1024:
         raise HTTPException(status_code=413, detail="File too large")
 
-    safe_name = file.filename or "unnamed"
-    # Trim overly long names (DB column limit 512)
-    safe_name = safe_name[:512]
+    safe_name = (file.filename or "unnamed")[:512]
 
     rec_id = uuid.uuid4()
     now = dt.datetime.now(dt.timezone.utc)
@@ -175,17 +168,14 @@ def download(file_id: uuid.UUID):
             raise HTTPException(status_code=404, detail="Not found")
 
     def iter_bytes():
-        # In real-world apps storing big files, stream/chunk from DB.
-        # Here we keep it simple (already loaded).
+        # For large files you'd want proper chunked streaming from the DB.
         yield row["data"]
 
-    headers = {
-        "Content-Disposition": f'attachment; filename="{row["filename"]}"'
-    }
+    headers = {"Content-Disposition": f'attachment; filename="{row["filename"]}"'}
     return StreamingResponse(
         iter_bytes(),
         media_type=row["content_type"] or "application/octet-stream",
-        headers=headers
+        headers=headers,
     )
 
 @app.post("/delete/{file_id}")
