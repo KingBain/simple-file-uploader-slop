@@ -99,11 +99,18 @@
         <form method="POST" action="upload" enctype="multipart/form-data">
           <gcds-file-uploader id="file" name="file" label="Choose a file" required></gcds-file-uploader>
 
-          <label for="storage">Storage location:</label>
-          <select id="storage" name="storage">
-            <option value="db">Database</option>
-            <option value="local">Local (container disk)</option>
-          </select>
+          <gcds-select
+  select-id="storage"
+  label="Storage location"
+  name="storage"
+  hint="Select where to store uploaded files."
+  default-value="Select option."
+  required
+>
+  <option value="db">Database</option>
+  <option value="local">Local (container disk)</option>
+</gcds-select>
+
 
           <gcds-button type="submit" button-style="primary" size="default">Upload</gcds-button>
           <p class="muted">Max size: {{ max_mb }} MB</p>

@@ -167,4 +167,5 @@ def delete_file(file_id: uuid.UUID):
 
         conn.execute(delete(files).where(files.c.id == file_id))
 
-    return RedirectResponse(url=".", status_code=303)
+    # Redirect back to the index page
+    return RedirectResponse(url="/", status_code=303)
