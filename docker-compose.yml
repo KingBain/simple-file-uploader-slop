@@ -1,0 +1,47 @@
+version: "3.9"
+
+services:
+  webfilebox:
+    image: bain19/simple-file-uploader-slop:latest
+    container_name: webfilebox
+    # Option B: use a prebuilt image instead of build:
+    # image: ghcr.io/your/repo/webfilebox:latest
+    ports:
+      - "8080:8080"
+    environment:
+      # REQUIRED — point to your external Postgres
+      # Format: postgresql+psycopg://USER:PASS@HOST:5432/DBNAME
+      - DATABASE_URL=${DATABASE_URL}
+
+      # Optional knobs
+      - MAX_UPLOAD_MB=${MAX_UPLOAD_MB:-100}
+      - APP_TITLE=${APP_TITLE:-WebFileBox}
+
+    # Restart policy for durability
+    restart: unless-stopped
+
+    # Lightweight HTTP healthcheck against the index page
+    healthcheck:
+      test: >
+        CMD-SHELL
+        python - <<'PY'
+        import sys, urllib.request
+        try:
+            with urllib.request.urlopen("http://127.0.0.1:8080/", timeout=3) as r:
+                sys.exit(0 if r.status == 200 else 1)
+        except Exception:
+            sys.exit(1)
+        PY
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+    # If you plan to share a user-defined *external* docker network with a separately
+    # composed Postgres container, uncomment the next two sections and ensure that
+    # network exists (see note below).
+    # networks:
+    #   - shared-db-net
+
+# networks:
+#   shared-db-net:
+#     external: true
